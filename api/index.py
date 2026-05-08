@@ -8,10 +8,12 @@ import os
 import time
 from sklearn.ensemble import GradientBoostingRegressor
 
-# VERSION: 2.0.1 - Gradient Boosting & Charts
+# VERSION: 2.1.0 - 5m Intraday Candlesticks
 app = FastAPI()
 
 def compute_technical_indicators(df):
+    if df.empty: return df
+    
     # RSI
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -29,7 +31,7 @@ def compute_technical_indicators(df):
     df['Upper_BB'] = df['MA20'] + (df['STD20'] * 2)
     df['Lower_BB'] = df['MA20'] - (df['STD20'] * 2)
     
-    # ATR (for SL calculation)
+    # ATR
     high_low = df['High'] - df['Low']
     high_close = np.abs(df['High'] - df['Close'].shift())
     low_close = np.abs(df['Low'] - df['Close'].shift())
@@ -44,15 +46,16 @@ def train_model_for_symbol(symbol):
     is_vercel = os.environ.get('VERCEL') == '1'
     base_dir = "/tmp" if is_vercel else os.getcwd()
     models_dir = os.path.join(base_dir, "models")
-    model_path = os.path.join(models_dir, f"{symbol}_model.joblib")
+    model_path = os.path.join(models_dir, f"{symbol}_model_5m.joblib")
     
-    if os.path.exists(model_path) and (time.time() - os.path.getmtime(model_path)) < 86400:
+    if os.path.exists(model_path) and (time.time() - os.path.getmtime(model_path)) < 3600: # 1 hour for intraday
         return True, model_path
 
     try:
         yf_symbol = f"{symbol}.NS"
-        df = yf.download(yf_symbol, period="2y", progress=False)
-        if df.empty or len(df) < 50: return False, None
+        # Fetch 5m data for the last 60 days (max allowed by Yahoo for 5m)
+        df = yf.download(yf_symbol, period="60d", interval="5m", progress=False)
+        if df.empty or len(df) < 100: return False, None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
         df = compute_technical_indicators(df)
@@ -63,9 +66,8 @@ def train_model_for_symbol(symbol):
         features = ['Open', 'High', 'Low', 'Close', 'Volume', 'RSI', 'EMA_9', 'EMA_21', 'Upper_BB', 'Lower_BB']
         X = df[features].astype(float)
         
-        # Use separate models for High and Low for better accuracy
-        model_high = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
-        model_low = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
+        model_high = GradientBoostingRegressor(n_estimators=100, random_state=42)
+        model_low = GradientBoostingRegressor(n_estimators=100, random_state=42)
         
         model_high.fit(X, df['Target_High'])
         model_low.fit(X, df['Target_Low'])
@@ -85,7 +87,8 @@ def predict_stock(symbol: str):
         if not success: return {"error": f"Failed to train for {symbol}"}
 
         yf_symbol = f"{symbol}.NS"
-        df = yf.download(yf_symbol, period="2mo", progress=False)
+        # Fetch 5m data for the last 5 days
+        df = yf.download(yf_symbol, period="5d", interval="5m", progress=False)
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
         
         df_indicators = compute_technical_indicators(df.copy())
@@ -97,23 +100,22 @@ def predict_stock(symbol: str):
         pred_high = float(models['high'].predict([features_data])[0])
         pred_low = float(models['low'].predict([features_data])[0])
         
-        # Signal Logic
         current_price = float(last_row['Close'])
         atr = float(last_row['ATR'])
         
         signal = "NEUTRAL"
-        if pred_high > current_price + (atr * 0.5): signal = "BUY"
-        elif pred_low < current_price - (atr * 0.5): signal = "SELL"
+        if pred_high > current_price + (atr * 0.3): signal = "BUY"
+        elif pred_low < current_price - (atr * 0.3): signal = "SELL"
         
-        # History for Charts
+        # History for Candlestick Chart (last 100 periods)
         chart_data = []
-        for i in range(-20, 0):
-            row = df.iloc[i]
+        for index, row in df.tail(100).iterrows():
             chart_data.append({
-                "time": row.name.strftime('%H:%M' if i == -1 else '%d %b'),
-                "price": float(row['Close']),
+                "time": int(index.timestamp()),
+                "open": float(row['Open']),
                 "high": float(row['High']),
-                "low": float(row['Low'])
+                "low": float(row['Low']),
+                "close": float(row['Close'])
             })
 
         return {
@@ -124,8 +126,8 @@ def predict_stock(symbol: str):
                 "signal": signal,
                 "entry": current_price,
                 "target": pred_high if signal == "BUY" else pred_low,
-                "stop_loss": current_price - (atr * 1.5) if signal == "BUY" else current_price + (atr * 1.5),
-                "trigger": current_price + (atr * 0.1) if signal == "BUY" else current_price - (atr * 0.1)
+                "stop_loss": current_price - (atr * 1.2) if signal == "BUY" else current_price + (atr * 1.2),
+                "trigger": current_price + (atr * 0.05) if signal == "BUY" else current_price - (atr * 0.05)
             },
             "chart_history": chart_data,
             "suggested_strike": round(current_price / 50) * 50
