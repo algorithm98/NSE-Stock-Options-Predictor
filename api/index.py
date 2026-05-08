@@ -49,19 +49,23 @@ def generate_signals(current_price, predicted_high, predicted_low, rsi, fundamen
 
 def train_model_for_symbol(symbol):
     symbol = symbol.upper()
-    model_path = f"models/{symbol}_model.joblib"
+    # On Vercel, /tmp is the only writable directory
+    is_vercel = os.environ.get('VERCEL') == '1'
+    base_dir = "/tmp" if is_vercel else os.getcwd()
+    models_dir = os.path.join(base_dir, "models")
+    model_path = os.path.join(models_dir, f"{symbol}_model.joblib")
     
     # Check if model already exists and is recent
     if os.path.exists(model_path):
         mtime = os.path.getmtime(model_path)
         if (time.time() - mtime) < 86400: # 24 hours
-            return True
+            return True, model_path
 
     try:
         yf_symbol = f"{symbol}.NS"
         df = yf.download(yf_symbol, period="2y", progress=False)
         if df.empty or len(df) < 50:
-            return False
+            return False, None
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
@@ -75,7 +79,7 @@ def train_model_for_symbol(symbol):
         df['Target_Close'] = df['Close'].shift(-1)
         
         df.dropna(inplace=True)
-        if df.empty: return False
+        if df.empty: return False, None
 
         features = ['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_5', 'SMA_20', 'RSI']
         X = df[features].astype(float)
@@ -84,12 +88,12 @@ def train_model_for_symbol(symbol):
         model = RandomForestRegressor(n_estimators=100, random_state=42)
         model.fit(X, y)
         
-        os.makedirs("models", exist_ok=True)
+        os.makedirs(models_dir, exist_ok=True)
         joblib.dump(model, model_path)
-        return True
+        return True, model_path
     except Exception as e:
         print(f"Training error for {symbol}: {e}")
-        return False
+        return False, None
 
 @app.get("/api/health")
 def health_check():
@@ -116,7 +120,7 @@ def predict_stock(symbol: str):
     try:
         symbol = symbol.upper()
         # Train on-the-fly if needed
-        success = train_model_for_symbol(symbol)
+        success, model_path = train_model_for_symbol(symbol)
         if not success:
             return {"error": f"Insufficient data or invalid symbol: {symbol}"}
 
@@ -144,7 +148,6 @@ def predict_stock(symbol: str):
             float(last_row['SMA_5']), float(last_row['SMA_20']), float(last_row['RSI'])
         ]
         
-        model_path = f"models/{symbol}_model.joblib"
         model = joblib.load(model_path)
         prediction = model.predict([features])[0]
         
