@@ -15,10 +15,10 @@ export default function Dashboard() {
   
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
-  const ema9SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
-  const ema21SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const seriesRef = useRef<any>(null);
+  const volumeSeriesRef = useRef<any>(null);
+  const ema9SeriesRef = useRef<any>(null);
+  const ema21SeriesRef = useRef<any>(null);
 
   const calculateEMA = (data: any[], period: number) => {
     const k = 2 / (period + 1);
@@ -117,7 +117,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (chartContainerRef.current) {
-      const chart = createChart(chartContainerRef.current, {
+      const chart: any = createChart(chartContainerRef.current, {
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
           textColor: '#64748b',
