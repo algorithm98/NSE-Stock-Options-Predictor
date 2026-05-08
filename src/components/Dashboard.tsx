@@ -155,7 +155,7 @@ export default function Dashboard() {
             <Zap className="w-8 h-8 text-white fill-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">Quant<span className="text-blue-500 not-italic">View</span></h1>
+            <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">Stock<span className="text-blue-500 not-italic"> Predictor Pro</span></h1>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
               <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">NSE Intraday Pro Engine</p>
