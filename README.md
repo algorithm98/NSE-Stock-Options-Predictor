@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NSE Stock Options Predictor
 
-## Getting Started
+A real-time web application to predict NSE stock option strike prices and premiums, provide buy/sell signals, and perform fundamental analysis.
 
-First, run the development server:
+## Features
+- **Real-time Predictions:** ML-based predictions for stock high/low/close targets.
+- **Signals:** Buy/Sell signals with Entry, Exit, Stop Loss, and Trigger price.
+- **Fundamentals:** Key metrics like P/E, EPS, and Market Cap.
+- **Auto-training:** Models are automatically retrained daily via GitHub Actions.
+- **Responsive Dashboard:** Built with Next.js and Tailwind CSS.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech Stack
+- **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS, Lucide Icons.
+- **Backend:** Python (FastAPI) running on Vercel Serverless Functions.
+- **ML:** Scikit-learn (Random Forest Regressor).
+- **Data:** NSEPython and yfinance.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install Frontend Dependencies:**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Install Backend Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Learn More
+3. **Train Initial Models:**
+   ```bash
+   python scripts/train.py
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Run with Vercel CLI (Recommended for API testing):**
+   ```bash
+   vercel dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Automated Training
+The application includes a GitHub Action (`.github/workflows/train.yml`) that runs every day at midnight. It fetches the latest 2 years of market data, retrains the models for supported symbols, and commits the updated weights back to the repository.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Supported Symbols
+Currently trained for: RELIANCE, TCS, HDFCBANK, INFY, ICICIBANK. To add more, update `scripts/train.py`.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Disclaimer: This tool is for educational purposes. Trading in stock markets involves significant risk.*

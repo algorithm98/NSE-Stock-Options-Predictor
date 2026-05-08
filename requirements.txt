@@ -1,0 +1,10 @@
+nsepython
+yfinance
+pandas
+numpy
+scikit-learn
+joblib
+requests
+fastapi
+uvicorn
+python-multipart
