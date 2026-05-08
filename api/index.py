@@ -115,7 +115,8 @@ def predict_stock(symbol: str):
                 "open": float(row['Open']),
                 "high": float(row['High']),
                 "low": float(row['Low']),
-                "close": float(row['Close'])
+                "close": float(row['Close']),
+                "volume": float(row['Volume'])
             })
 
         return {
