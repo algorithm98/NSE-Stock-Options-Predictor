@@ -8,6 +8,7 @@ import os
 import time
 from sklearn.ensemble import GradientBoostingRegressor
 
+# VERSION: 2.0.1 - Gradient Boosting & Charts
 app = FastAPI()
 
 def compute_technical_indicators(df):
